@@ -124,12 +124,25 @@ func deployEB(wrapper *awscliwrapper.EBWrapper) error {
 	quitCh := make(chan os.Signal)
 	signal.Notify(quitCh, os.Interrupt)
 	errCh := make(chan error)
-	var lastEvent *eb.EventDescription
+	var lastEvents []*eb.EventDescription
+	filterEvents := func(evs []*eb.EventDescription) []*eb.EventDescription {
+		var filtered []*eb.EventDescription
+	loop:
+		for _, ev := range evs {
+			for _, lev := range lastEvents {
+				if *ev.EventDate == *lev.EventDate && *ev.Message == *lev.Message {
+					continue loop
+				}
+			}
+			filtered = append(filtered, ev)
+		}
+		return filtered
+	}
 	go func() {
 		for {
 			start := time.Now()
-			if lastEvent != nil {
-				start = *lastEvent.EventDate
+			if len(lastEvents) > 0 {
+				start = *lastEvents[len(lastEvents)-1].EventDate
 			}
 			events, err := wrapper.GetEvents(appName, envName, start, 10)
 			if err != nil {
@@ -139,10 +152,7 @@ func deployEB(wrapper *awscliwrapper.EBWrapper) error {
 			sort.Slice(events, func(i, j int) bool {
 				return events[i].EventDate.Sub(*events[j].EventDate) < 0
 			})
-			for _, ev := range events {
-				if lastEvent != nil && *ev.Message == *lastEvent.Message {
-					continue
-				}
+			for _, ev := range filterEvents(events) {
 				fmt.Printf("%s: %s / %s\n", ev.EventDate.Format("2006-01-02 15:04:05.000"), *ev.EnvironmentName, *ev.Message)
 			}
 			if len(events) > 0 {
@@ -151,8 +161,8 @@ func deployEB(wrapper *awscliwrapper.EBWrapper) error {
 					errCh <- nil
 					break
 				}
-				lastEvent = ev
 			}
+			lastEvents = events
 			time.Sleep(time.Second)
 		}
 	}()
