@@ -6,7 +6,7 @@ require (
 	github.com/mattn/go-colorable v0.1.2 // indirect
 	github.com/stretchr/testify v1.3.0 // indirect
 	github.com/tcnksm/go-input v0.0.0-20180404061846-548a7d7a8ee8
-	github.com/urfave/cli v1.20.0
+	github.com/urfave/cli v1.21.1-0.20190817182405-23c83030263f
 	golang.org/x/crypto v0.0.0-20190513172903-22d7a77e9e5f // indirect
 	golang.org/x/sys v0.0.0-20190526052359-791d8a0f4d09 // indirect
 )

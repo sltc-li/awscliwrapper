@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 
@@ -25,9 +26,24 @@ func main() {
 			Usage: "aws profile",
 			Value: "default",
 		},
+		cli.BoolFlag{
+			Name:  "fish",
+			Usage: "generate fish completion",
+		},
 	}
 	app.Commands = cmds.Commands()
 	app.EnableBashCompletion = true
+	app.Action = func(c *cli.Context) error {
+		if c.Bool("fish") {
+			s, err := app.ToFishCompletion()
+			if err != nil {
+				return err
+			}
+			fmt.Println(s)
+			return nil
+		}
+		return cli.ShowAppHelp(c)
+	}
 
 	if err := app.Run(os.Args); err != nil {
 		log.Fatal(err)

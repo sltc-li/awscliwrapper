@@ -27,6 +27,7 @@ COMMANDS:
 GLOBAL OPTIONS:
    --region value   aws region (default: "ap-northeast-1")
    --profile value  aws profile (default: "default")
+   --fish           generate fish completion
    --help, -h       show help
    --version, -v    print the version
 ```
