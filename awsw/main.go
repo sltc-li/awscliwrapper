@@ -2,8 +2,10 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
+	"path"
 
 	"github.com/urfave/cli"
 
@@ -35,11 +37,20 @@ func main() {
 	app.EnableBashCompletion = true
 	app.Action = func(c *cli.Context) error {
 		if c.Bool("fish") {
-			s, err := app.ToFishCompletion()
+			completion, err := c.App.ToFishCompletion()
 			if err != nil {
 				return err
 			}
-			fmt.Println(s)
+			home, err := os.UserHomeDir()
+			if err != nil {
+				return err
+			}
+			completionFile := path.Join(home, ".config", "fish", "completions", "awsw.fish")
+			fmt.Printf("Installing to %s\n", completionFile)
+			if err := ioutil.WriteFile(completionFile, []byte(completion), 0644); err != nil {
+				return err
+			}
+			fmt.Println("Done!")
 			return nil
 		}
 		return cli.ShowAppHelp(c)
