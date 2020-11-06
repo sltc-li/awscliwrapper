@@ -2,6 +2,7 @@ package cmds
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/aws/aws-sdk-go/service/ecs"
 	"github.com/fatih/color"
@@ -104,6 +105,7 @@ func selectOneARN(query string, arns []awscliwrapper.ARN) (awscliwrapper.ARN, er
 		nameToARN[name] = arn
 	}
 
+	sort.Strings(names)
 	name, err := InputUI.Select(query, names, &input.Options{
 		Required: true,
 		Loop:     true,
