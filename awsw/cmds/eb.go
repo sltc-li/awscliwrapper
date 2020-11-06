@@ -8,26 +8,42 @@ import (
 	"strings"
 	"time"
 
-	eb "github.com/aws/aws-sdk-go/service/elasticbeanstalk"
+	"github.com/aws/aws-sdk-go/service/elasticbeanstalk"
 	"github.com/fatih/color"
 	"github.com/tcnksm/go-input"
+	"github.com/urfave/cli"
 
 	"github.com/li-go/awscliwrapper"
 )
 
-func describeEB(wrapper *awscliwrapper.EBWrapper, ec2Wrapper *awscliwrapper.EC2Wrapper) error {
-	appName, _, err := selectEBApp(wrapper)
+func EBCommands() cli.Commands {
+	return cli.Commands{
+		{
+			Name:   "walk",
+			Usage:  "walk EB",
+			Action: ActionFunc(walkEB),
+		},
+		{
+			Name:   "deploy",
+			Usage:  "deploy EB",
+			Action: ActionFunc(deployEB),
+		},
+	}
+}
+
+func walkEB(w *awscliwrapper.Wrapper) error {
+	appName, _, err := selectEBApp(w.EB)
 	if err != nil {
 		return err
 	}
 
-	envName, _, err := selectEBEnv(wrapper, appName)
+	envName, _, err := selectEBEnv(w.EB, appName)
 	if err != nil {
 		return err
 	}
 
 	// print env vars
-	vars, err := wrapper.GetEnvVars(appName, envName)
+	vars, err := w.EB.GetEnvVars(appName, envName)
 	if err != nil {
 		return err
 	}
@@ -39,7 +55,7 @@ func describeEB(wrapper *awscliwrapper.EBWrapper, ec2Wrapper *awscliwrapper.EC2W
 	fmt.Printf("Environment Variables:\n%s\n", strings.Join(varStrings, "\n"))
 
 	// print resources
-	resourceDesc, err := wrapper.GetEnvResource(envName)
+	resourceDesc, err := w.EB.GetEnvResource(envName)
 	if err != nil {
 		return err
 	}
@@ -52,7 +68,7 @@ func describeEB(wrapper *awscliwrapper.EBWrapper, ec2Wrapper *awscliwrapper.EC2W
 		instanceIDs[i] = *instance.Id
 	}
 	fmt.Printf("\nResources:\nLoad Balancers: %s\nInstances:\n", strings.Join(lbNames, ","))
-	instances, err := ec2Wrapper.DescribeInstances(instanceIDs...)
+	instances, err := w.EC2.DescribeInstances(instanceIDs...)
 	if err != nil {
 		return err
 	}
@@ -62,19 +78,19 @@ func describeEB(wrapper *awscliwrapper.EBWrapper, ec2Wrapper *awscliwrapper.EC2W
 	return nil
 }
 
-func deployEB(wrapper *awscliwrapper.EBWrapper) error {
-	appName, _, err := selectEBApp(wrapper)
+func deployEB(w *awscliwrapper.Wrapper) error {
+	appName, _, err := selectEBApp(w.EB)
 	if err != nil {
 		return err
 	}
 
-	envName, envs, err := selectEBEnv(wrapper, appName)
+	envName, envs, err := selectEBEnv(w.EB, appName)
 	if err != nil {
 		return err
 	}
 
 	// select version
-	vers, err := wrapper.GetVersions(appName)
+	vers, err := w.EB.GetVersions(appName)
 	verLabels := make([]string, len(vers))
 	for i, ver := range vers {
 		var envNames []string
@@ -92,7 +108,7 @@ func deployEB(wrapper *awscliwrapper.EBWrapper) error {
 			verLabels[i] = verLabels[i] + " / " + strings.Join(envNames, ",")
 		}
 	}
-	verLabel, err := ui.Select("select a version?", verLabels, &input.Options{
+	verLabel, err := InputUI.Select("select a version?", verLabels, &input.Options{
 		Required: true,
 		Loop:     true,
 	})
@@ -105,7 +121,7 @@ func deployEB(wrapper *awscliwrapper.EBWrapper) error {
 	// deploy
 	query := fmt.Sprintf("application: %s\ndeploy %s to %s?",
 		color.GreenString(appName), color.GreenString(envName), color.GreenString(version))
-	answer, err := ui.Select(query, []string{"yes", "no"}, &input.Options{
+	answer, err := InputUI.Select(query, []string{"yes", "no"}, &input.Options{
 		Required: true,
 		Loop:     true,
 	})
@@ -114,7 +130,7 @@ func deployEB(wrapper *awscliwrapper.EBWrapper) error {
 	}
 	if answer == "yes" {
 		fmt.Printf("%s ...\n", color.GreenString("deploying"))
-		if err := wrapper.DeployEB(envName, version); err != nil {
+		if err := w.EB.DeployEB(envName, version); err != nil {
 			return err
 		}
 		fmt.Printf("%s !!!\n\n", color.GreenString("deployed"))
@@ -124,9 +140,9 @@ func deployEB(wrapper *awscliwrapper.EBWrapper) error {
 	quitCh := make(chan os.Signal)
 	signal.Notify(quitCh, os.Interrupt)
 	errCh := make(chan error)
-	var lastEvents []*eb.EventDescription
-	filterEvents := func(evs []*eb.EventDescription) []*eb.EventDescription {
-		var filtered []*eb.EventDescription
+	var lastEvents []*elasticbeanstalk.EventDescription
+	filterEvents := func(evs []*elasticbeanstalk.EventDescription) []*elasticbeanstalk.EventDescription {
+		var filtered []*elasticbeanstalk.EventDescription
 	loop:
 		for _, ev := range evs {
 			for _, lev := range lastEvents {
@@ -144,7 +160,7 @@ func deployEB(wrapper *awscliwrapper.EBWrapper) error {
 			if len(lastEvents) > 0 {
 				start = *lastEvents[len(lastEvents)-1].EventDate
 			}
-			events, err := wrapper.GetEvents(appName, envName, start, 10)
+			events, err := w.EB.GetEvents(appName, envName, start, 10)
 			if err != nil {
 				errCh <- err
 				break
@@ -174,8 +190,8 @@ func deployEB(wrapper *awscliwrapper.EBWrapper) error {
 	}
 }
 
-func selectEBApp(wrapper *awscliwrapper.EBWrapper) (string, []*eb.ApplicationDescription, error) {
-	apps, err := wrapper.GetApps()
+func selectEBApp(eb *awscliwrapper.EB) (string, []*elasticbeanstalk.ApplicationDescription, error) {
+	apps, err := eb.GetApps()
 	if err != nil {
 		return "", nil, err
 	}
@@ -184,7 +200,7 @@ func selectEBApp(wrapper *awscliwrapper.EBWrapper) (string, []*eb.ApplicationDes
 		appNames[i] = *app.ApplicationName
 	}
 	sort.Strings(appNames)
-	appName, err := ui.Select("select an application?", appNames, &input.Options{
+	appName, err := InputUI.Select("select an application?", appNames, &input.Options{
 		Required: true,
 		Loop:     true,
 	})
@@ -195,8 +211,8 @@ func selectEBApp(wrapper *awscliwrapper.EBWrapper) (string, []*eb.ApplicationDes
 	return appName, apps, nil
 }
 
-func selectEBEnv(wrapper *awscliwrapper.EBWrapper, appName string) (string, []*eb.EnvironmentDescription, error) {
-	envs, err := wrapper.GetEnvironments(appName)
+func selectEBEnv(eb *awscliwrapper.EB, appName string) (string, []*elasticbeanstalk.EnvironmentDescription, error) {
+	envs, err := eb.GetEnvironments(appName)
 	if err != nil {
 		return "", nil, err
 	}
@@ -211,7 +227,7 @@ func selectEBEnv(wrapper *awscliwrapper.EBWrapper, appName string) (string, []*e
 		envNames[i] = *env.EnvironmentName + " / " + color.GreenString(*env.Status)
 	}
 	sort.Strings(envNames)
-	envName, err := ui.Select("select an environment?", envNames, &input.Options{
+	envName, err := InputUI.Select("select an environment?", envNames, &input.Options{
 		Required: true,
 		Loop:     true,
 	})

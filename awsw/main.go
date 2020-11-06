@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"path"
 
@@ -18,16 +17,6 @@ func main() {
 	app.Usage = "a simple wrapper command for awscli"
 	app.Version = "0.0.1"
 	app.Flags = []cli.Flag{
-		cli.StringFlag{
-			Name:  "region",
-			Usage: "aws region",
-			Value: "ap-northeast-1",
-		},
-		cli.StringFlag{
-			Name:  "profile",
-			Usage: "aws profile",
-			Value: "default",
-		},
 		cli.BoolFlag{
 			Name:  "fish",
 			Usage: "generate fish completion",
@@ -57,6 +46,6 @@ func main() {
 	}
 
 	if err := app.Run(os.Args); err != nil {
-		log.Fatal(err)
+		fmt.Fprintln(os.Stderr, err)
 	}
 }

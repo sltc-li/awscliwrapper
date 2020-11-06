@@ -8,32 +8,28 @@ import (
 	"path"
 	"strings"
 
+	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 )
 
-func NewS3(region, profile string) (*S3Wrapper, error) {
-	sess, err := newSession(region, profile)
-	if err != nil {
-		return nil, err
-	}
-
-	return &S3Wrapper{svc: s3.New(sess)}, nil
-}
-
-type S3Wrapper struct {
+type S3 struct {
 	svc *s3.S3
 }
 
-func (w *S3Wrapper) GetBuckets() ([]*s3.Bucket, error) {
+func NewS3(sess *session.Session) *S3 {
+	return &S3{svc: s3.New(sess)}
+}
+
+func (s *S3) GetBuckets() ([]*s3.Bucket, error) {
 	i := s3.ListBucketsInput{}
-	o, err := w.svc.ListBuckets(&i)
+	o, err := s.svc.ListBuckets(&i)
 	if err != nil {
 		return nil, err
 	}
 	return o.Buckets, nil
 }
 
-func (w *S3Wrapper) GetObjects(bucket string, prefix string) ([]string, []*s3.Object, error) {
+func (s *S3) GetObjects(bucket string, prefix string) ([]string, []*s3.Object, error) {
 	var prefixes []string
 	var objects []*s3.Object
 	var cToken *string
@@ -46,7 +42,7 @@ func (w *S3Wrapper) GetObjects(bucket string, prefix string) ([]string, []*s3.Ob
 		if cToken != nil {
 			i.SetContinuationToken(*cToken)
 		}
-		o, err := w.svc.ListObjectsV2(&i)
+		o, err := s.svc.ListObjectsV2(&i)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -66,11 +62,11 @@ func (w *S3Wrapper) GetObjects(bucket string, prefix string) ([]string, []*s3.Ob
 }
 
 // TODO: upload s3 object
-func (w *S3Wrapper) getObject(bucket, key string) error {
+func (s *S3) getObject(bucket, key string) error {
 	i := s3.GetObjectInput{}
 	i.SetBucket(bucket)
 	i.SetKey(key)
-	o, err := w.svc.GetObject(&i)
+	o, err := s.svc.GetObject(&i)
 	if err != nil {
 		return err
 	}
@@ -88,7 +84,7 @@ func detectContentType(file *os.File) (string, error) {
 	return http.DetectContentType(buff[:n]), nil
 }
 
-func (w *S3Wrapper) UploadFile(from, to string) error {
+func (s *S3) UploadFile(from, to string) error {
 	file, err := os.Open(from)
 	if err != nil {
 		return err
@@ -107,6 +103,6 @@ func (w *S3Wrapper) UploadFile(from, to string) error {
 	i.SetBody(file)
 	i.SetACL("public-read")
 	i.SetContentType(contentType)
-	_, err = w.svc.PutObject(&i)
+	_, err = s.svc.PutObject(&i)
 	return err
 }

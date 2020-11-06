@@ -1,4 +1,4 @@
-package envvars
+package awscliwrapper
 
 import (
 	"regexp"
@@ -9,21 +9,21 @@ var (
 	keyNameRegex = regexp.MustCompile(`\w+=\w*`)
 )
 
-type Var struct {
+type EnvVar struct {
 	Name  string
 	Value string
 }
 
-func (env Var) String() string {
-	return env.Name + "=" + env.Value
+func (ev EnvVar) String() string {
+	return ev.Name + "=" + ev.Value
 }
 
-func Split(s string) []Var {
-	var vars []Var
+func SplitIntoEnvVars(s string) []EnvVar {
+	var vars []EnvVar
 	for _, c := range strings.Split(s, ",") {
 		if keyNameRegex.MatchString(c) {
 			kv := strings.Split(c, "=")
-			vars = append(vars, Var{Name: kv[0], Value: kv[1]})
+			vars = append(vars, EnvVar{Name: kv[0], Value: kv[1]})
 		} else if len(vars) > 0 {
 			vars[len(vars)-1].Value += "," + c
 		}

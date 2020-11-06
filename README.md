@@ -19,15 +19,14 @@ VERSION:
    0.0.1
 
 COMMANDS:
-     eb-desc    describe elasticbeanstalk
-     eb-deploy  deploy elasticbeanstalk
-     s3-ls
-     help, h    Shows a list of commands or help for one command
+   eb       EB commands
+   s3       S3 commands
+   ecs      ECS commands
+   whoami   Show information of the current AWS user
+   help, h  Shows a list of commands or help for one command
 
 GLOBAL OPTIONS:
-   --region value   aws region (default: "ap-northeast-1")
-   --profile value  aws profile (default: "default")
-   --fish           generate fish completion
-   --help, -h       show help
-   --version, -v    print the version
+   --fish         generate fish completion
+   --help, -h     show help
+   --version, -v  print the version
 ```

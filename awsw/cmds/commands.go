@@ -1,6 +1,7 @@
 package cmds
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/tcnksm/go-input"
@@ -10,65 +11,38 @@ import (
 )
 
 var (
-	ui = &input.UI{
-		Writer: os.Stdout,
-		Reader: os.Stdin,
-	}
+	InputUI = &input.UI{Writer: os.Stdout, Reader: os.Stdin}
 )
 
 func Commands() cli.Commands {
 	return cli.Commands{
 		{
-			Name:  "eb-desc",
-			Usage: "describe elasticbeanstalk",
-			Action: func(c *cli.Context) error {
-				wrapper, err := newEBWrapper(c)
-				if err != nil {
-					return err
-				}
-				ec2wrapper, err := newEC2Wrapper(c)
-				if err != nil {
-					return err
-				}
-				return describeEB(wrapper, ec2wrapper)
-			},
+			Name:        "eb",
+			Usage:       "EB commands",
+			Subcommands: EBCommands(),
 		},
 		{
-			Name:  "eb-deploy",
-			Usage: "deploy elasticbeanstalk",
-			Action: func(c *cli.Context) error {
-				wrapper, err := newEBWrapper(c)
-				if err != nil {
-					return err
-				}
-				return deployEB(wrapper)
-			},
+			Name:        "s3",
+			Usage:       "S3 commands",
+			Subcommands: S3Commands(),
 		},
 		{
-			Name:  "s3-ls",
-			Usage: "",
-			Action: func(c *cli.Context) error {
-				wrapper, err := newS3Wrapper(c)
+			Name:        "ecs",
+			Usage:       "ECS commands",
+			Subcommands: ECSCommands(),
+		},
+		{
+			Name:  "whoami",
+			Usage: "Show information of the current AWS user",
+			Action: ActionFunc(func(w *awscliwrapper.Wrapper) error {
+				u, err := w.IAM.GetCurrentUser()
 				if err != nil {
 					return err
 				}
-				return listS3(wrapper)
-			},
+
+				fmt.Printf("Current AWS user: %s (%s)\n", u.Name, u.ARN)
+				return nil
+			}),
 		},
 	}
-}
-
-func newEBWrapper(c *cli.Context) (*awscliwrapper.EBWrapper, error) {
-	region, profile := c.GlobalString("region"), c.GlobalString("profile")
-	return awscliwrapper.NewEB(region, profile)
-}
-
-func newEC2Wrapper(c *cli.Context) (*awscliwrapper.EC2Wrapper, error) {
-	region, profile := c.GlobalString("region"), c.GlobalString("profile")
-	return awscliwrapper.NewEC2(region, profile)
-}
-
-func newS3Wrapper(c *cli.Context) (*awscliwrapper.S3Wrapper, error) {
-	region, profile := c.GlobalString("region"), c.GlobalString("profile")
-	return awscliwrapper.NewS3(region, profile)
 }

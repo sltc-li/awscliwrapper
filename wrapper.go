@@ -1,14 +1,32 @@
 package awscliwrapper
 
 import (
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 )
 
-func newSession(region string, profile string) (*session.Session, error) {
-	var cfg = aws.NewConfig()
-	cfg = cfg.WithRegion(region)
-	cfg = cfg.WithCredentials(credentials.NewSharedCredentials("", profile))
-	return session.NewSession(cfg)
+type Wrapper struct {
+	EB  *EB
+	EC2 *EC2
+	ECS *ECS
+	S3  *S3
+	SSM *SSM
+	IAM *IAM
+}
+
+func New() (*Wrapper, error) {
+	sess, err := session.NewSessionWithOptions(session.Options{
+		SharedConfigState: session.SharedConfigEnable,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &Wrapper{
+		EB:  NewEB(sess),
+		EC2: NewEC2(sess),
+		ECS: NewECS(sess),
+		S3:  NewS3(sess),
+		SSM: NewSSM(sess),
+		IAM: NewIAM(sess),
+	}, nil
 }

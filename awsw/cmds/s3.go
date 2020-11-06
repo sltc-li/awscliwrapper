@@ -10,9 +10,80 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/fatih/color"
 	"github.com/tcnksm/go-input"
+	"github.com/urfave/cli"
 
 	"github.com/li-go/awscliwrapper"
 )
+
+func S3Commands() cli.Commands {
+	return cli.Commands{
+		{
+			Name:   "walk",
+			Usage:  "walk S3",
+			Action: ActionFunc(walkS3),
+		},
+	}
+}
+
+func walkS3(w *awscliwrapper.Wrapper) error {
+	// select bucket
+	buckets, err := w.S3.GetBuckets()
+	if err != nil {
+		return err
+	}
+	var bucketNames []string
+	for _, b := range buckets {
+		if skipBucket(b) {
+			continue
+		}
+		bucketNames = append(bucketNames, *b.Name)
+	}
+	sort.Strings(bucketNames)
+	bucketName, err := InputUI.Select("select a bucket?", bucketNames, &input.Options{
+		Required: true,
+		Loop:     true,
+	})
+	if err != nil {
+		return err
+	}
+	fmt.Printf("bucket: %s\n\n", color.GreenString(bucketName))
+
+	// print object
+	var prefix string
+	for {
+		prefixes, objects, err := w.S3.GetObjects(bucketName, prefix)
+		if err != nil {
+			return err
+		}
+		if len(prefixes) == 0 && len(objects) == 0 {
+			return nil
+		}
+		for _, obj := range objects {
+			if *obj.Key == prefix {
+				continue
+			}
+			fmt.Println(s3URL(bucketName, *obj.Key))
+		}
+
+		if len(prefixes) == 0 {
+			return nil
+		}
+		sort.Strings(prefixes)
+		selectedPrefix, err := InputUI.Select("\nselect a prefix?", prefixes, &input.Options{
+			Required: true,
+			Loop:     true,
+		})
+		if err != nil {
+			return err
+		}
+		fmt.Printf("prefix: %s\n\n", color.GreenString(selectedPrefix))
+		prefix = selectedPrefix
+	}
+}
+
+func s3URL(bucket, objectKey string) string {
+	return fmt.Sprintf("https://%s.s3.amazonaws.com/%s", bucket, objectKey)
+}
 
 func getFiles(dir string) ([]string, error) {
 	fileInfos, err := ioutil.ReadDir(dir)
@@ -52,64 +123,4 @@ func skipBucket(bucket *s3.Bucket) bool {
 		}
 	}
 	return false
-}
-
-func listS3(wrapper *awscliwrapper.S3Wrapper) error {
-	// select bucket
-	buckets, err := wrapper.GetBuckets()
-	if err != nil {
-		return err
-	}
-	var bucketNames []string
-	for _, b := range buckets {
-		if skipBucket(b) {
-			continue
-		}
-		bucketNames = append(bucketNames, *b.Name)
-	}
-	sort.Strings(bucketNames)
-	bucketName, err := ui.Select("select a bucket?", bucketNames, &input.Options{
-		Required: true,
-		Loop:     true,
-	})
-	if err != nil {
-		return err
-	}
-	fmt.Printf("bucket: %s\n\n", color.GreenString(bucketName))
-
-	// print object
-	var prefix string
-	for {
-		prefixes, objects, err := wrapper.GetObjects(bucketName, prefix)
-		if err != nil {
-			return err
-		}
-		if len(prefixes) == 0 && len(objects) == 0 {
-			return nil
-		}
-		for _, obj := range objects {
-			if *obj.Key == prefix {
-				continue
-			}
-			fmt.Println(s3URL(bucketName, *obj.Key))
-		}
-
-		if len(prefixes) == 0 {
-			return nil
-		}
-		sort.Strings(prefixes)
-		selectedPrefix, err := ui.Select("\nselect a prefix?", prefixes, &input.Options{
-			Required: true,
-			Loop:     true,
-		})
-		if err != nil {
-			return err
-		}
-		fmt.Printf("prefix: %s\n\n", color.GreenString(selectedPrefix))
-		prefix = selectedPrefix
-	}
-}
-
-func s3URL(bucket, objectKey string) string {
-	return fmt.Sprintf("https://%s.s3.amazonaws.com/%s", bucket, objectKey)
 }

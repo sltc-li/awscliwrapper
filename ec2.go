@@ -1,23 +1,19 @@
 package awscliwrapper
 
 import (
+	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
 )
 
-func NewEC2(region, profile string) (*EC2Wrapper, error) {
-	sess, err := newSession(region, profile)
-	if err != nil {
-		return nil, err
-	}
-
-	return &EC2Wrapper{svc: ec2.New(sess)}, nil
-}
-
-type EC2Wrapper struct {
+type EC2 struct {
 	svc *ec2.EC2
 }
 
-func (w *EC2Wrapper) DescribeInstances(instanceIDs ...string) ([]*ec2.Instance, error) {
+func NewEC2(sess *session.Session) *EC2 {
+	return &EC2{svc: ec2.New(sess)}
+}
+
+func (e *EC2) DescribeInstances(instanceIDs ...string) ([]*ec2.Instance, error) {
 	if len(instanceIDs) == 0 {
 		return nil, nil
 	}
@@ -28,7 +24,7 @@ func (w *EC2Wrapper) DescribeInstances(instanceIDs ...string) ([]*ec2.Instance, 
 		pInstanceIDs = append(pInstanceIDs, &instanceIDs[i])
 	}
 	i.SetInstanceIds(pInstanceIDs)
-	o, err := w.svc.DescribeInstances(&i)
+	o, err := e.svc.DescribeInstances(&i)
 	if err != nil {
 		return nil, err
 	}
