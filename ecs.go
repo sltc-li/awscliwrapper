@@ -1,6 +1,7 @@
 package awscliwrapper
 
 import (
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ecs"
 )
@@ -27,8 +28,8 @@ func (e *ECS) ListClusters() ([]ARN, error) {
 	return arns, err
 }
 
-func (e *ECS) GetServices(cluster ARN) ([]ARN, error) {
-	o, err := e.svc.ListServices(&ecs.ListServicesInput{Cluster: cluster.AWSString()})
+func (e *ECS) GetServices(clusterName string) ([]ARN, error) {
+	o, err := e.svc.ListServices(&ecs.ListServicesInput{Cluster: aws.String(clusterName)})
 	if err != nil {
 		return nil, err
 	}
@@ -41,10 +42,10 @@ func (e *ECS) GetServices(cluster ARN) ([]ARN, error) {
 	return arns, err
 }
 
-func (e *ECS) GetTaskDefinition(cluster, service ARN) (ARN, error) {
+func (e *ECS) GetTaskDefinition(clusterName, serviceName string) (ARN, error) {
 	o, err := e.svc.DescribeServices(&ecs.DescribeServicesInput{
-		Cluster:  cluster.AWSString(),
-		Services: []*string{service.AWSString()},
+		Cluster:  aws.String(clusterName),
+		Services: []*string{aws.String(serviceName)},
 	})
 	if err != nil {
 		return "", nil

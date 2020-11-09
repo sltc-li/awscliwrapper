@@ -15,49 +15,51 @@ import (
 func ECSCommands() cli.Commands {
 	return cli.Commands{
 		{
-			Name:   "walk",
-			Usage:  "walk ECS",
-			Action: ActionFunc(walkCluster),
+			Name:  "walk",
+			Usage: "walk ECS",
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:  "cluster",
+					Usage: "cluster name",
+				},
+				cli.StringFlag{
+					Name:  "service",
+					Usage: "service name",
+				},
+				cli.StringFlag{
+					Name:  "container",
+					Usage: "container name",
+				},
+			},
+			Action: ActionFuncWithContext(walkCluster),
 		},
 	}
 }
 
-func walkCluster(w *awscliwrapper.Wrapper) error {
-	clusters, err := w.ECS.ListClusters()
-	if err != nil {
-		return err
-	}
+func walkCluster(c *cli.Context, w *awscliwrapper.Wrapper) error {
+	cluster := c.String("cluster")
+	service := c.String("service")
+	container := c.String("container")
 
-	if len(clusters) == 0 {
-		return nil
-	}
-
-	cluster := clusters[0]
-	if len(clusters) > 1 {
-		cluster, err = selectOneARN("select a cluster?", clusters)
+	if cluster == "" {
+		arn, err := getARN("select a cluster?", w.ECS.ListClusters)
 		if err != nil {
 			return err
 		}
+		cluster = arn.Name()
 	}
-	fmt.Printf("cluster: %s\n\n", color.GreenString(cluster.Name()))
+	fmt.Printf("cluster: %s\n\n", color.GreenString(cluster))
 
-	services, err := w.ECS.GetServices(cluster)
-	if err != nil {
-		return err
-	}
-
-	if len(services) == 0 {
-		return nil
-	}
-
-	service := services[0]
-	if len(services) > 1 {
-		service, err = selectOneARN("select a service?", services)
+	if service == "" {
+		arn, err := getARN("select a service?", func() ([]awscliwrapper.ARN, error) {
+			return w.ECS.GetServices(cluster)
+		})
 		if err != nil {
 			return err
 		}
+		service = arn.Name()
 	}
-	fmt.Printf("service: %s\n\n", color.GreenString(service.Name()))
+	fmt.Printf("service: %s\n\n", color.GreenString(service))
 
 	taskDef, err := w.ECS.GetTaskDefinition(cluster, service)
 	if err != nil {
@@ -71,6 +73,10 @@ func walkCluster(w *awscliwrapper.Wrapper) error {
 	}
 
 	for _, d := range containerDefs {
+		if container != "" && d.Name != container {
+			continue
+		}
+
 		fmt.Printf("container: %s\n", d.Name)
 		for _, e := range d.Environments {
 			fmt.Printf("\t%s = %s\n", *e.Name, *e.Value)
@@ -94,6 +100,27 @@ func walkCluster(w *awscliwrapper.Wrapper) error {
 	}
 
 	return nil
+}
+
+func getARN(query string, getter func() ([]awscliwrapper.ARN, error)) (awscliwrapper.ARN, error) {
+	arns, err := getter()
+	if err != nil {
+		return "", err
+	}
+
+	if len(arns) == 0 {
+		return "", nil
+	}
+
+	arn := arns[0]
+	if len(arns) > 1 {
+		arn, err = selectOneARN(query, arns)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	return arn, nil
 }
 
 func selectOneARN(query string, arns []awscliwrapper.ARN) (awscliwrapper.ARN, error) {
