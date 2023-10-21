@@ -3,9 +3,9 @@ package cmds
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"sort"
 	"strings"
+	"syscall"
 
 	"github.com/fatih/color"
 	"github.com/tcnksm/go-input"
@@ -152,11 +152,7 @@ func execContainer(c *cli.Context, w *awscliwrapper.Wrapper) error {
 		c.String("command"),
 	)
 
-	cmd := exec.Command("sh", "-c", exeCommand)
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
+	return syscall.Exec("/bin/sh", []string{"/bin/sh", "-c", exeCommand}, os.Environ())
 }
 
 func deployService(c *cli.Context, w *awscliwrapper.Wrapper) error {

@@ -3,7 +3,7 @@ awscli-wrapper
 
 ### Install with `go get`
 ```
-$ go get github.com/li-go/awscliwrapper/awsw
+$ go install github.com/sltc-li/awscliwrapper/awsw@latest
 ```
 
 ### How to use
