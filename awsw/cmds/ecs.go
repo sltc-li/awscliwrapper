@@ -11,7 +11,7 @@ import (
 	"github.com/tcnksm/go-input"
 	"github.com/urfave/cli"
 
-	"github.com/li-go/awscliwrapper"
+	"github.com/sltc-li/awscliwrapper"
 )
 
 func ECSCommands() cli.Commands {

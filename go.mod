@@ -1,4 +1,4 @@
-module github.com/li-go/awscliwrapper
+module github.com/sltc-li/awscliwrapper
 
 go 1.20
 

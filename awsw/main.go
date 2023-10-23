@@ -8,7 +8,7 @@ import (
 
 	"github.com/urfave/cli"
 
-	"github.com/li-go/awscliwrapper/awsw/cmds"
+	"github.com/sltc-li/awscliwrapper/awsw/cmds"
 )
 
 func main() {

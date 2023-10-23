@@ -3,7 +3,7 @@ package cmds
 import (
 	"github.com/urfave/cli"
 
-	"github.com/li-go/awscliwrapper"
+	"github.com/sltc-li/awscliwrapper"
 )
 
 func ActionFunc(fn func(w *awscliwrapper.Wrapper) error) cli.ActionFunc {
